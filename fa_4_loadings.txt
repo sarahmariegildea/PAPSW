@@ -1,0 +1,18 @@
+
+Loadings:
+                  MR1    MR3    MR4    MR2   
+safetystrsa_1_rev         0.690              
+safetystrsa_2_rev         0.699              
+safetystrsa_3_rev  0.465  0.452              
+safetystrsa_4_rev  0.873                     
+safetystrsa_5_rev  0.695                     
+safetystrsb_1_rev  0.507                0.371
+safetystrsb_2_rev                       0.899
+safetystrsb_3_rev  0.674                     
+safetystrsb_4_rev                0.313       
+safetystrsb_5_rev                0.997       
+
+                 MR1   MR3   MR4   MR2
+SS loadings    2.249 1.244 1.108 0.988
+Proportion Var 0.225 0.124 0.111 0.099
+Cumulative Var 0.225 0.349 0.460 0.559

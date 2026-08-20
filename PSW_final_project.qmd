@@ -1,0 +1,1427 @@
+---
+title: "Occupational Trauma and PTSD Among Pennsylvania Public Safety Workers"
+format: html
+editor: visual
+date: "2026-08-17"
+name: "Sarah Gildea
+---
+
+**Research** **question**: Among public safety workers in Pennsylvania, are 12-month occupational traumatic events, work-related stressors, and number of employed local operational personnel employed in the locale associated with 30-day DSM-5 PTSD?
+
+**Motivation:** Public safety workers (PSW), including police officers, firefighters, and emergency medical personnel, are routinely exposed to traumatic events as part of their occupational duties. Repeated exposure to traumatic events increases the risk for PTSD. Despite this risk, barriers to accessing mental health treatment remain common among PSWs. The present analysis examines occupational stressors, trauma exposure, and PTSD among public safety workers in Pennsylvania.
+
+**Data source:** A pilot study was conducted in March-April 2026 among PSWs in the state of Pennsylvania who were dues-paying members of the Pennsylvania Professional Fire Fighters Association (PPFFA) or the Pennsylvania Fraternal Order of Police (PAFOP). The PPFFA represents approximately 13,000 active and retired professional firefighters, emergency medical technicians (EMT), and paramedics across 61 local lodges. The PAFOP has approximately 40,000 active and retired members in 106 local lodges, including troopers, municipal police officers, and county sheriffs and deputies. All dues-paying members aged 18 or over were eligible to participate and were recruited/invited to take the survey via the union representatives.
+
+**Outcome**: 30-day DSM-5 PTSD (yes/no) variable name: dsm5_ptsd_recreated
+
+**Primary exposure**: Number of work-related traumatic experiences in the past 12 months variable name: trauma_cat
+
+**Additional predictors/covariates/control**: Number of operational personnel employed in the locale, work-related stressors scale, current employment status, type of PSW variable names: age_4cat, sex_2cat, raceethnicity_cat, education_cat, maritalrelat_new, psw_service4cat, psw_status3cat, safety_numppl_1; four work-stressor factors are: stressor_factor1, stressor_factor2, stressor_factor3, stressor_factor4
+
+**Analysis:** Logistic regression
+
+**Conclusion:** **I**n this sample of Pennsylvania public safety workers, 20.0% met criteria for current 30-day DSM-5 PTSD. Nearly half of participants reported 9+ occupational traumatic-event types, and PTSD prevalence was highest in this group. However, the descriptive association was not strictly linear across exposure categories, with lower PTSD prevalence among participants reporting 1-8 event types than among those reporting no occupational event types. Logistic regression models were used to estimate the association between occupational trauma exposure and PTSD while adjusting for demographic and occupational characteristics. Because the data are observational and cross-sectional, the findings should be interpreted as associations rather than causal effects. The exploratory stressor-adjusted model should also be interpreted cautiously because some stressor factors contained only one or two items and the work-stressor questions were not answered by all employment-status groups.
+
+**Limitations:** These findings should be interpreted in light of several limitations, including the cross-sectional design, reliance on self-reported data, and potential limitations in generalizability. I had some problems reading in the data and cleaning it, but otherwise I learned a lot and also how to interpret the data.
+
+## Running Code
+
+```{r}
+# Load packages
+# install and load packages
+
+install.packages("devtools") 
+install.packages("tidyverse")
+install.packages("broom")
+install.packages("here")
+install.packages("palmerpenguins")
+install.packages("gtsummary")
+install.packages("scales")
+install.packages("janitor")
+install.packages("methods")
+install.packages("readr")
+install.packages("skimr")
+install.packages("writexl")
+install.packages("psych")
+install.packages("gt")
+install.packages("haven")
+install.packages("forcats")
+devtools::install_github("ID529/ID529tutorials")
+
+library(tidyverse)
+library(broom)
+library(here)
+library(palmerpenguins)
+library(gtsummary)
+library(scales)
+library(janitor)
+library(methods)
+library(readr)
+library(writexl)
+library(psych)
+library(gt)
+library(haven)
+library(forcats)
+```
+
+```{r}
+# 01_Import data
+# read in the PA csv dataset and view it:
+#PSW_df <- read_csv(here("The 2985 with Critera_DSM5_PTSD = 0 or 1.csv"))
+#I came back here and reread because it was not importing correctly
+PSW_df <- read.csv(here("The 2985 with Critera_DSM5_PTSD = 0 or 1.csv"))
+str(PSW_df)
+# keep these as characters
+keep_char <-c("ResponseId", "DistributionChannel", "UserLanguage",
+              "NOTFINISHED", "LAST_SCREEN", "LastVariable")
+
+PSW_df <- PSW_df |>
+    mutate(across(
+        -c(any_of(keep_char), ends_with("Fill"), ends_with("Text")),
+        ~as.numeric(.x)
+    ))
+
+# Print and glimpse at it, because there are "warning" messages " problems(dat) "
+# and it looks like some variables types are logic which is probably because of missing/NA
+PSW_df 
+glimpse(PSW_df) 
+problems(PSW_df) 
+#look at structure of dataframe
+str(PSW_df)
+
+```
+
+```{r}
+# 02_Clean and recode variables 
+#-------------------------------------------------------
+#I am going to only use a subset of variables, so will recode those missings etc: 
+# 1) demos variables: 
+# responseid age sex:
+# hispanic race_1 race_2 race_3 race_4 race_5 race_6 race_6_text
+# education maritalstatus relatstatus
+
+# 2) PSW basic variables: 
+# psw_servicesector psw_status_4cat psw_location - constructed to use as control
+# safety_wrkhrs_1 safety_fireemshrs_1 - these are just used for logical imputations
+#only answered if Safety_WrkStatus = 1 /// only answered if Safety_WrkStatus = 1 and Safety_WrkType = 1
+
+# 3) # in locale
+# safety_numppl_1 - predictor for 
+
+# 4) work-related stress
+# safetystrsa_1:safetystrsb_5 
+#only answered if Safety_WrkStatus = 1
+
+# 5) Traumatic events
+# the TEs were answered based on the type of PSW as indicated in the survey
+# police: telawenfa_1:telawenfa_4 telawenfb_1:telawenfb_5 telawenfc_1:telawenfc_4
+# fire: tefirea_1:tefirea_4 tefireb_1:tefireb_4 tefirec_1:tefirec_4
+# fire+EMS: tefireemsa_1:tefireemsa_5 tefireemsb_1:tefireemsb_4 tefireemsc_1:tefireemsc_4
+# EMS: teemsa_1:teemsa_5 teemsb_1:teemsb_4 teemsc_1:teemsc_4
+# 911: te911a_1:te911a_5 te911b_1:te911b_4 te911c_1:te911c_3
+# other: teothera_1:teothera_5 teotherb_1:teotherb_5
+
+# 6) PTSD 
+# ptsda_1:ptsda_7 ptsdb_1:ptsdb_5 ptsdc_1:ptsdc_5 ptsdd_1:ptsdd_4 ptsdint_1:ptsdint_3 ptsd_dist
+# Full DSM-5 30-day PTSD criteria yes/no: criteria_dsm5_ptsd
+
+#------------------------------ clean column names ------------------------
+
+# I don't want to use the clean function because the variable names are already clean
+# So I will just make them all lower case and look at it
+names(PSW_df) <- tolower(names(PSW_df))
+names(PSW_df)
+
+#------------------------------turn into a tibble#------------------------------
+PSW_data <- as_tibble(PSW_df)
+print(PSW_data)
+
+#  -----------------------------------------Standardize missing value codes -----------------------------------------
+# -99 in qualtrics means seen but not answered, NA means not seen because of skips
+# so I am going to replace -99 with NA
+
+# first do some logical imputations/create new variables because of skips and then code -99 to NA
+
+##############################------------------------ DEMOS------------------------############
+# 1) age and sex
+# See if any are -99 and turn to NA: age_cat sex_cat age
+table(PSW_data$age, useNA="ifany")
+table(PSW_data$sex, useNA="ifany")
+
+PSW_data <- PSW_data |>
+    mutate(
+        age = ifelse(age == -99, NA_real_, age),
+        age_4cat = case_when(
+            age >= 18 & age <= 24 ~ 0,
+            age >= 25 & age <= 34 ~ 1,
+            age >= 35 & age <= 49 ~ 2,
+            age >= 50 & age <= 64 ~ 3,
+            age >= 65 ~ 4,
+            TRUE ~ NA_real_
+        ),
+        age_4cat = labelled(
+            age_4cat,
+            c(
+                "18–24" = 0,
+                "25–34" = 1,
+                "35–49" = 2,
+                "50–64" = 3,
+                "65+" = 4
+            )
+        ),
+        sex = ifelse(sex == -99, NA_real_, sex),
+        sex_2cat = case_when(
+            sex == 1 ~ 0,
+            sex == 2 ~ 1,
+            TRUE ~ NA_real_
+        ),
+        sex_2cat = labelled(
+            sex_2cat,
+            c(
+                "Female" = 0,
+                "Male" = 1
+            )
+        )
+    )
+table(PSW_data$age_4cat, useNA="ifany")
+table(PSW_data$age, useNA="ifany")
+table(PSW_data$sex, useNA="ifany")
+table(PSW_data$sex_2cat, useNA="ifany")
+
+#  2) ethnicity and race
+# Hispanic - answered by everyone
+# 1	yes 2	no -99	Seen but unanswered
+# race: -99	Seen but nothing selected
+# race_1	1	White or Caucasian selected 0	White or Caucasian not selected
+# race_2	1	Black or African American selected 0	Black or African American not selected
+# race_3	1	American Indian or Alaskan Native selected 0	American Indian or Alaskan Native not selected
+# race_4	1	Asian (e.g., Chinese, Filipino, Indian) selected 0	Asian (e.g., Chinese, Filipino, Indian) not selected
+# race_5	1	Native Hawaiian or other Pacific Islander selected 0	Native Hawaiian or other Pacific Islander not selected
+# race_6	1	My race is not listed above (Please briefly describe) selected 0	My race is not listed above (Please briefly describe) not selected
+# and create a 4 category race
+# i'm going to just ignore the text open-end, and create hispanic, nonhisp white, nonhisp black, other non-hispanic
+# but first i'm goign to create new categorical variables so I can see the distribution of race better
+# but a count variable first because you could check all 6, i just want to seevand then categorical
+
+PSW_data <- PSW_data |>
+    mutate(
+        n_races = rowSums(across(race_1:race_6, ~ !is.na(.) & . == 1)),
+        race_cat = case_when(
+            hispanic == 1 ~ "Hispanic",
+            n_races >= 2 ~ "More than one race",
+            race_1 == 1 ~ "White",
+            race_2 == 1 ~ "Black",
+            race_3 == 1 ~ "American Indian/Alaskan Native",
+            race_4 == 1 ~ "Asian",
+            race_5 == 1  ~ "Native Hawaiian/Pacific Islander",
+            race_6 == 1 ~ "Other",
+            n_races == 0 ~ NA_character_,
+            TRUE ~ NA_character_
+        ),
+        race_cat = factor(
+            race_cat, levels = c(
+                "Hispanic", "White", "Black", "American Indian/Alaskan Native", "Asian", 
+                "Native Hawaiian/Pacific Islander", "More than one race", "Other"
+            ))) 
+table(PSW_data$race_cat, useNA="ifany")
+
+# ok it looks good, so I am goign to use this variable and collapse to create 
+# a new race/ethnicity categorical that is hispanic, nonhisp white, nonshisp black, nonhispanic other
+# because the distribution of other races is small
+PSW_data <- PSW_data |>
+    mutate(
+        raceethnicity_cat =  case_when(
+            race_cat == "Hispanic" ~ 2,
+            race_cat == "White"  ~ 0,
+            race_cat == "Black" ~ 1,
+            race_cat %in% c("American Indian/Alaskan Native", "Asian", 
+                            "Native Hawaiian/Pacific Islander", "More than one race", "Other") ~ 3,
+            TRUE ~ NA_real_
+        ),
+        raceethnicity_cat = labelled(
+            raceethnicity_cat,
+            c("Hispanic" = 2, "Non-Hispanic White" = 0, "Non-Hispanic Black" = 1, 
+              "Non-Hispanic Other" = 3
+            )
+        )
+    ) 
+table(PSW_data$raceethnicity_cat, useNA="ifany")
+
+#  3) education
+# Education
+# coded 1	Some high school or less 2	GED, ARNG, or alternative education certificate 3	High school graduate
+# 4	Some post high school education, no degree 5	Associate degree (academic, occupational, technical, or vocational program)
+# 6	Bachelor’s degree (e.g., BA, AB, BS, BBA) 7	Master’s, Doctoral, or Professional degree (e.g., MA, MS, MBA, PhD, ScD, MD, JD)
+# -99	Seen but unanswered
+# just look to see the distribution, and then I Will create a categorical education 
+# 
+table(PSW_data$education, useNA="ifany")
+
+PSW_data <- PSW_data |>
+    mutate(
+        education_cat = case_when(
+            education %in% c(1, 2, 3)  ~ 0,
+            education == 4             ~ 1,
+            education == 5             ~ 2,
+            education %in% c(6, 7)     ~ 3,
+            TRUE ~ NA_real_      
+        ), 
+        education_cat = labelled(
+            education_cat,
+            c("High school or GED" = 0, "Some post high school, no degree" = 1, 
+              "Associate degree" = 2, "Bachelor degree or higher" = 3
+            )
+        )
+    ) 
+table(PSW_data$education_cat, useNA="ifany")
+
+# 4) marital status 
+# maritalstatus: answered by everyone
+# 1	Married 2	Separated 3	Divorced 4	Widowed 5	Never married -99	Seen but unanswered
+# relatstatus: missing if maritalstatus = 1 "married"       
+# 1	Living with someone in a marriage-like relationship or engaged to be married
+# 2 Steadily dating one person, but not engaged
+# 3	Dating one or more people, but not in one steady relationship 4	Not currently dating
+# -99	Seen but unanswered
+
+#look at a table of maritalstatus x relationstatus
+table(PSW_data$maritalstatus, PSW_data$relatstatus, useNA="ifany")
+table(PSW_data$relatstatus, useNA="ifany")
+
+#collapse to married/engaged/cohabit, previously married, never married. there are
+#some people who quit the survey before this point so there will be NA's
+PSW_data <- PSW_data |>
+    mutate(
+        maritalrelat_new = case_when(
+            maritalstatus == 1 | relatstatus == 1 ~ 0,
+            maritalstatus %in% c(2, 3, 4) ~ 1,
+            maritalstatus == 5 ~ 2,
+            TRUE ~ NA_real_
+        ),
+        maritalrelat_new = labelled(
+            maritalrelat_new,
+            c(
+                "Married/engaged/cohabit" = 0,
+                "Previously married" = 1,
+                "Never married" = 2
+            )
+        )
+    )
+table(PSW_data$maritalrelat_new, useNA="ifany")
+
+##############################------------------------ PSW basics------------------------############
+#1) service sector, status
+# PSW service sector: psw_servicesector is a Qualtrics clean constructed of safety_wrkstatus
+# PSW status: psw_status_4cat is a Qualtrics constructed of safety_wrktype
+# look at distributions of these
+table(PSW_data$psw_servicesector, PSW_data$safety_wrktype, useNA="ifany")
+table(PSW_data$psw_status_4cat, PSW_data$safety_wrkstatus, useNA="ifany")
+table(PSW_data$psw_servicesector, useNA="ifany")
+
+#create updated 4-category, other will be NA
+PSW_data <- PSW_data |>
+    mutate(
+        psw_service4cat = case_when(
+            psw_servicesector == 1 ~ 1,
+            psw_servicesector == 2 ~ 0,
+            psw_servicesector == 3 ~ 2,
+            psw_servicesector == 4 ~ 3,
+            TRUE ~ NA_real_      
+        ), 
+        psw_service4cat = labelled(
+            psw_service4cat,
+            c("Police" = 0, "Fire" = 1, 
+              "EMS" = 2, "911 dispatcher" = 3
+            )
+        )
+    ) 
+
+table(PSW_data$psw_service4cat, useNA="ifany")
+
+#create updated 3-category, other will be NA
+table(PSW_data$psw_status_4cat, useNA="ifany")
+PSW_data <- PSW_data |>
+    mutate(
+        psw_status3cat = case_when(
+            psw_status_4cat == 1 ~ 0,
+            psw_status_4cat == 2 ~ 1,
+            psw_status_4cat == 3 ~ 2,
+            TRUE ~ NA_real_      
+        ), 
+        psw_status3cat = labelled(
+            psw_status3cat,
+            c("Current" = 0, "Retired" = 1, 
+              "Disabled" = 2
+            )
+        )
+    ) 
+table(PSW_data$psw_status3cat, useNA="ifany")
+
+# 2) number of people, look at missings for num ppl - i'm going to leave it continouous for now: 
+table(PSW_data$safety_numppl_1, useNA="ifany")
+#110 with -99, 
+PSW_data <- PSW_data |>
+    mutate(safety_numppl_1 = ifelse(safety_numppl_1 == -99, NA_real_, safety_numppl_1)    
+    )
+table(PSW_data$safety_numppl_1, useNA="ifany")
+
+##############################------------------------ work stressors-------##############################
+# these are only answered if Safety_WrkStatus = 1
+# so i will recode all -99 to NA
+# the stem question : How much ongoing stress do you experience in each of these other areas of your psw?
+
+#safetystrsa_1 - Inadequate staffing to do the job safely and effectively
+#safetystrsa_2	- Inadequate equipment or facilities
+#safetystrsa_3	- Conflicting demands or unclear expectations
+#safetystrsa_4	- Favoritism or unfair treatment of workers by line supervisors
+#safetystrsa_5	- Lack of input or voice in decisions that affect how you do your job
+#safetystrsb_1	- Incompetent, poorly trained, or unmotivated supervisors
+#safetystrsb_2	- Incompetent, poorly trained, or unmotivated coworkers
+#safetystrsb_3	- A toxic work climate (e.g., gossip, disrespect, bullying, lack of trust)
+#safetystrsb_4	- Excessive paperwork or administrative tasks that take time away from core duties
+#safetystrsb_5	- Negative reactions, criticism, or lack of support from the public or media
+# response options are 1	Extreme 2	A lot 3	Some 4	A little 5	None -99	Seen but unanswered
+# so i want to just create a 10-item scale. I will do that later because I Want to look to see if they are all correlated
+# to decide if I should create a scale
+# but first I will recode to make the items 0-4 so 0=none and 4= extreme and recode -99 to na
+table(PSW_data$safetystrsa_1, useNA="ifany")
+PSW_data <- PSW_data |>
+    mutate(
+        across(
+            safetystrsa_1:safetystrsb_5, 
+            ~ 5 - na_if(., -99), 
+            .names = "{.col}_rev"
+        )
+    )
+table(PSW_data$safetystrsb_5_rev, useNA="ifany")
+# ------------------------Traumatic events ------------------------
+# the TEs were answered based on the type of PSW as indicated in the survey
+# so there are a lot of NA's. also these variabels are coded
+# 1	Very often (More than 10 times) 2	Many times (6-10 times) 3	A few times (3-5 times)
+# 4	Once or twice   5	Never   -99	Seen but unanswered
+#so I want to reverse code, and also collapse and create count variables for everyone
+
+# but reverse code and turn -99 to 0
+PSW_data <- PSW_data |>
+    mutate(
+        across(telawenfa_1:telawenfc_4,
+               ~ 5 - na_if(., -99), 
+               .names = "{.col}_rev"
+        )
+    )
+table(PSW_data$telawenfc_4_rev, useNA="ifany")
+
+PSW_data <- PSW_data |>
+    mutate(
+        across(
+            tefirea_1:tefirec_4,
+            ~ 5 - na_if(., -99), 
+            .names = "{.col}_rev"
+        )
+    )
+table(PSW_data$tefirec_4, useNA="ifany")
+table(PSW_data$tefirec_4_rev, useNA="ifany")
+
+PSW_data <- PSW_data |>
+    mutate(
+        across(
+            tefireemsa_1:tefireemsc_4,
+            ~ 5 - na_if(., -99), 
+            .names = "{.col}_rev"
+        )
+    )
+table(PSW_data$tefireemsc_4, useNA="ifany")
+table(PSW_data$tefireemsc_4_rev, useNA="ifany")
+
+PSW_data <- PSW_data |>
+    mutate(
+        across(
+            te911a_1:te911c_3,
+            ~ 5 - na_if(., -99), 
+            .names = "{.col}_rev"
+        )
+    )
+table(PSW_data$te911c_3, useNA="ifany")
+table(PSW_data$te911c_3_rev, useNA="ifany")
+
+PSW_data <- PSW_data |>
+    mutate(
+        across(
+            teothera_1:teotherb_5,
+            ~ 5 - na_if(., -99), 
+            .names = "{.col}_rev"
+        )
+    )
+table(PSW_data$teotherb_5, useNA="ifany")
+table(PSW_data$teotherb_5_rev, useNA="ifany")
+
+#################### ------------------------PTSD ------------------------
+# PTSD variables, recode to 0-4 instead of 1-5
+PSW_data <- PSW_data |>
+    mutate(
+        across(
+            c(ptsda_1:ptsd_dist,
+            ),
+            ~ 5 - na_if(., -99), 
+            .names = "{.col}_rev"
+        )
+    )
+table(PSW_data$ptsda_1, useNA="ifany")
+table(PSW_data$ptsda_1_rev, useNA="ifany")
+
+PSW_data |> 
+    select(ptsda_1_rev:ptsd_dist_rev) |> 
+    lapply(table, useNA = "ifany")
+```
+
+```{r}
+# Create analytic variables
+#################### ------------------------ DSM-5 PTSD #################### 
+
+# Count of Criterion B items endorsed extremely, a lot, or some
+PSW_data$dsmcritb_count <- apply(
+    PSW_data[,
+             c("ptsda_1", "ptsda_3", "ptsdb_1", "ptsdb_5", "ptsdc_3")],
+    1,
+    function(x) sum(x %in% c(1, 2, 3), na.rm = TRUE)
+)
+# Yes/no for meeting Criterion B: 1 or more
+PSW_data$dsmcritb <- ifelse(
+    PSW_data$dsmcritb_count >= 1,
+    1,
+    0
+)
+
+# Count of Criterion C items endorsed extremely, a lot, or some
+PSW_data$dsmcritc_count <- apply(
+    PSW_data[,
+             c("ptsda_4", "ptsda_5")],
+    1,
+    function(x) sum(x %in% c(1, 2, 3), na.rm = TRUE)
+)
+# Yes/no for meeting Criterion C: 1 or more
+PSW_data$dsmcritc <- ifelse(
+    PSW_data$dsmcritc_count >= 1,
+    1,
+    0
+)
+
+# Count of Criterion D items endorsed extremely, a lot, or some
+PSW_data$dsmcritd_count <- apply(
+    PSW_data[,
+             c("ptsdb_2", "ptsdc_1", "ptsdc_2", "ptsdc_5",
+               "ptsdd_2", "ptsdd_3", "ptsdd_4")],
+    1,
+    function(x) sum(x %in% c(1, 2, 3), na.rm = TRUE)
+)
+# Yes/no for meeting Criterion D: 2 or more
+PSW_data$dsmcritd <- ifelse(
+    PSW_data$dsmcritd_count >= 2,
+    1,
+    0
+)
+
+# Count of Criterion E items endorsed extremely, a lot, or some
+PSW_data$dsmcrite_count <- apply(
+    PSW_data[,
+             c("ptsda_6", "ptsda_7", "ptsdb_3",
+               "ptsdb_4", "ptsdc_4", "ptsdd_1")],
+    1,
+    function(x) sum(x %in% c(1, 2, 3), na.rm = TRUE)
+)
+# Yes/no for meeting Criterion E: 2 or more
+PSW_data$dsmcrite <- ifelse(
+    PSW_data$dsmcrite_count >= 2,
+    1,
+    0
+)
+
+# Count of Interference + Distress  items endorsed extremely, a lot, or some
+PSW_data$dsmint_count <- apply(
+    PSW_data[,
+             c("ptsdint_1", "ptsdint_2", "ptsdint_3", "ptsd_dist")],
+    1,
+    function(x) sum(x %in% c(1, 2, 3), na.rm = TRUE)
+)
+# Yes/no for meeting interference
+PSW_data$dsmint <- ifelse(
+    PSW_data$dsmint_count >= 1,
+    1,
+    0
+)
+
+# Yes/no for meeting all DSM-5 Criterion with interference
+PSW_data$dsm5_ptsd_recreated <- ifelse(
+    PSW_data$dsmcritb == 1 &
+        PSW_data$dsmcritc == 1 &
+        PSW_data$dsmcritd == 1 &
+        PSW_data$dsmcrite == 1 &
+        PSW_data$dsmint == 1,
+    1,
+    0
+)
+PSW_data <- PSW_data |>
+    mutate(dsm5_ptsd_recreated = labelled(
+        dsm5_ptsd_recreated,
+        c("No 30-day DSM-5 PTSD" = 0, "Yes 30-day DSM-5 PTSD" = 1)
+    )
+    )
+# Yes/no for meeting DSM-5 Criterion without interference
+PSW_data$dsm5_ptsd_noint <- ifelse(
+    PSW_data$dsmcritb == 1 &
+        PSW_data$dsmcritc == 1 &
+        PSW_data$dsmcritd == 1 &
+        PSW_data$dsmcrite == 1,
+    1,
+    0
+)
+table(PSW_data$dsm5_ptsd_recreated, useNA = "ifany")
+
+# table comparing recreated and original variable
+table(
+    PSW_data$dsm5_ptsd_recreated,
+    PSW_data$criteria_dsm5_ptsd,
+    useNA = "ifany"
+)
+
+#################### ------------------------ Work stressors #################### 
+# Spearman correlation to see if the items hang together to create a scale
+stressors <- PSW_data |>
+    select(safetystrsa_1_rev:safetystrsb_5_rev)
+psych::corr.test(
+    stressors,
+    method = "spearman",
+    use = "pairwise"
+)
+# most of the item correlations are .4 or higher 
+# reliability
+psych::alpha(stressors)
+# the raw_alpha is .9 so they are probably redundant
+# and now a factor anaylsis to see how many factors
+psych::fa.parallel(
+    stressors,
+    fa = "fa",
+    cor = "poly"
+)
+# the suggested number of factors is 4, components na
+# so run the 4 factor solution
+stressors <- PSW_data |>
+    select(safetystrsa_1_rev:safetystrsb_5_rev)
+
+fa_4 <- psych::fa(
+    stressors,
+    nfactors = 4,
+    rotate = "oblimin",
+    fm = "minres",
+    cor = "poly"
+)
+print(fa_4$loadings, cutoff = .30)
+# save this
+saveRDS(fa_4, "fa_4_factor_analysis.rds")
+fa_4_loadings <- as.data.frame(unclass(fa_4$loadings))
+
+write.csv(
+    fa_4_loadings,
+    "fa_4_loadings.csv",
+    row.names = TRUE
+)
+writeLines(
+    capture.output(print(fa_4$loadings, cutoff = .30)),
+    "fa_4_loadings.txt"
+)
+png(
+    "stressors_parallel_analysis.png",
+    width = 8,
+    height = 8,
+    units = "in",
+    res = 300
+)
+psych::fa.parallel(
+    stressors,
+    fa = "fa",
+    cor = "poly"
+)
+dev.off()
+#Loadings:
+#                   MR3    MR2    MR1    MR4   
+# safetystrsa_1_rev         0.690              
+# safetystrsa_2_rev         0.699              
+# safetystrsa_3_rev  0.465  0.452              
+# safetystrsa_4_rev  0.873                     
+# safetystrsa_5_rev  0.695                     
+# safetystrsb_1_rev  0.507                0.371
+# safetystrsb_2_rev                       0.899
+# safetystrsb_3_rev  0.674                     
+# safetystrsb_4_rev                0.313       
+# safetystrsb_5_rev                0.997       
+
+#               MR3   MR2   MR1   MR4
+# SS loadings    2.249 1.244 1.108 0.988
+# Proportion Var 0.225 0.124 0.111 0.099
+# Cumulative Var 0.225 0.349 0.460 0.559
+# so i will create 4 scales with these items instead of 1 big one
+
+#  How much ongoing stress do you experience in each of these other areas of your public safety work? 
+# stressor_factor1 = Organizational climate and supervisory stress scale 
+# safetystrsa_3_rev: Conflicting demands or unclear expectations
+# safetystrsa_4_rev: Favoritism or unfair treatment of workers by line supervisors
+# safetystrsa_5_rev: Lack of input or voice in decisions that affect how you do your job
+# safetystrsb_1_rev: Incompetent, poorly trained, or unmotivated supervisors
+# safetystrsb_3_rev: A toxic work climate (e.g., gossip, disrespect, bullying, lack of trust)
+
+# stressor_factor2 = Operational resource inadequacy scale
+# safetystrsa_1_rev: Inadequate staffing to do the job safely and effectively
+# safetystrsa_2_rev: Inadequate equipment or facilities
+
+# stressor_factor3 = Administrative and public-facing stress scale
+# safetystrsb_4_rev: Excessive paperwork or administrative tasks that take time away from core duties
+# safetystrsb_5_rev: Negative reactions, criticism, or lack of support from the public or media
+
+# stressor_factor4 = Coworker competence concerns scale
+# safetystrsb_2_rev: Incompetent, poorly trained, or unmotivated coworkers
+# An exploratory factor analysis suggested four dimensions of work-related stress. 
+# Because some factors contained only one or two items and some items cross-loaded, 
+# these stressor measures were treated as exploratory secondary covariates rather than 
+# validated scales.        
+PSW_data <- PSW_data |>
+    mutate(
+        stressor_factor1 = rowSums(
+            across(c(
+                safetystrsa_3_rev,
+                safetystrsa_4_rev,
+                safetystrsa_5_rev,
+                safetystrsb_1_rev,
+                safetystrsb_3_rev
+            )),
+            na.rm = TRUE
+        ),
+        stressor_factor2 = rowSums(
+            across(c(
+                safetystrsa_1_rev,
+                safetystrsa_2_rev
+            )),
+            na.rm = TRUE
+        ), 
+        stressor_factor3 = rowSums(
+            across(c(
+                safetystrsb_4_rev,
+                safetystrsb_5_rev
+            )),
+            na.rm = TRUE
+        ),
+        stressor_factor4 = rowSums(
+            across(c(
+                safetystrsb_2_rev
+            )),
+            na.rm = TRUE
+        )
+    )
+PSW_data |> 
+    select(stressor_factor1:stressor_factor4) |> 
+    lapply(table, useNA = "ifany")
+
+#################### ------------------------ Traumatic events #################### 
+# create dummy variables for if they experienced each trauma and then a summary of the number experienced 
+PSW_data <- PSW_data |>
+    mutate(
+        across(
+            telawenfa_1_rev:teotherb_5_rev,
+            ~ case_when(
+                .x == 0 ~ 0,
+                .x >= 1 ~ 1,
+                TRUE ~ NA_real_
+            ),
+            .names = "{.col}_bin"
+        )
+    )
+PSW_data <- PSW_data |>
+    mutate(
+        trauma_count = rowSums(
+            across(ends_with("_bin")),
+            na.rm = TRUE
+        )
+    )
+PSW_data |> 
+    select( trauma_count) |> 
+    lapply(table, useNA = "ifany")
+
+#and now create categorical for number of trauma types
+PSW_data <- PSW_data |>
+    mutate(
+        trauma_cat = case_when(
+            trauma_count == 0 ~ 0,
+            trauma_count <= 2 ~ 1,
+            trauma_count <= 5 ~ 2,
+            trauma_count <= 8 ~ 3,
+            trauma_count >= 9 ~ 4,
+            TRUE ~ NA_real_
+        ),
+        trauma_cat = labelled(
+            trauma_cat,
+            c(
+                "0 traumatic events" = 0,
+                "1-2" = 1,
+                "3-5" = 2,
+                "6-8" = 3,
+                "9+ traumatic events" = 4
+            )
+        )
+    )
+table(PSW_data$trauma_count, useNA="ifany")
+table(PSW_data$trauma_cat, useNA="ifany")
+```
+
+```{r}
+# Descriptive statistics
+# List the outcome and all predictor variables I'm going to use
+PSW_model_vars <- c(
+    "age_4cat",
+    "sex_2cat",
+    "raceethnicity_cat",
+    "education_cat",
+    "maritalrelat_new",
+    "psw_service4cat",
+    "psw_status3cat",
+    "safety_numppl_1",
+    "dsm5_ptsd_recreated",
+    "stressor_factor1",
+    "stressor_factor2",
+    "stressor_factor3",
+    "stressor_factor4",
+    "trauma_cat"
+)
+# Number of missing observations for variables used
+# in the primary adjusted model
+PSW_data |>
+    summarise(
+        across(
+            all_of(PSW_model_vars),
+            ~ sum(is.na(.x))
+        )
+    )
+# Keep only observations complete on those variables
+#PSW_analysis <- PSW_data |>
+#   drop_na(all_of(PSW_model_vars))
+
+# check the n's before and after
+#nrow(PSW_data)
+#nrow(PSW_analysis)
+
+
+# I need to create factor and numeric versions so it works in tables vs regression
+PSW_analysis <- PSW_data |>
+    mutate(
+        # Explicit numeric version of PTSD outcome
+        ptsd_yes = case_when(
+            as.numeric(dsm5_ptsd_recreated) == 1 ~ 1L,
+            as.numeric(dsm5_ptsd_recreated) == 0 ~ 0L,
+            TRUE ~ NA_integer_
+        ),
+        
+        # Factor version used for Table 1 
+        ptsd_group = factor(
+            ptsd_yes,
+            levels = c(0, 1),
+            labels = c("No 30-day DSM-5 PTSD", "30-day DSM-5 PTSD")
+        ),
+        # Factor versions used in tables/regression
+        trauma_cat_f = as_factor(trauma_cat) |>
+            forcats::fct_relevel("0 traumatic events"),
+        
+        age_4cat_f = as_factor(age_4cat),
+        sex_2cat_f = as_factor(sex_2cat),
+        raceethnicity_cat_f = as_factor(raceethnicity_cat),
+        education_cat_f = as_factor(education_cat),
+        maritalrelat_new_f = as_factor(maritalrelat_new),
+        psw_service4cat_f = as_factor(psw_service4cat),
+        psw_status3cat_f = as_factor(psw_status3cat)
+    ) 
+levels(PSW_analysis$trauma_cat_f)
+table(PSW_analysis$ptsd_group, useNA = "ifany")
+table(PSW_analysis$ptsd_yes, useNA = "ifany")
+table(PSW_analysis$psw_status3cat_f, useNA = "ifany")
+table(PSW_analysis$psw_service4cat_f, useNA = "ifany")
+
+# now just some simple descriptive statistics 
+# How prevalent is current PTSD among PSWs?
+ptsd_prev <- PSW_analysis |>
+    summarise(
+        n = sum(!is.na(ptsd_yes)),
+        ptsd_n = sum(ptsd_yes == 1, na.rm = TRUE),
+        ptsd_pct = mean(ptsd_yes == 1, na.rm = TRUE) * 100
+    )
+ptsd_prev
+
+# n     ptsd_n ptsd_pct
+#  2985    596     20.0
+# 20.0% of PSWs met criteria for 30-day DSM-5 PTSD
+
+# Distribution of trauma event types
+# number of different occupational traumatic-event types endorsed
+table(as_factor(PSW_analysis$trauma_cat, levels = "labels"),
+      useNA = "ifany")
+# 0 traumatic events 1-2  3-5  6-8     9+ traumatic events 
+# 264                 218   433  610          1460 
+
+# PTSD prevalence within the trauma categories
+ptsd_by_trauma <- PSW_analysis |>
+    group_by(trauma_cat_f) |>
+    summarise(
+        n = n(),
+        ptsd_n = sum(ptsd_yes == 1, na.rm = TRUE),
+        ptsd_pct = mean(ptsd_yes == 1, na.rm = TRUE) * 100
+    )
+ptsd_by_trauma
+# A tibble: 5 × 4
+# trauma_cat                  n ptsd_n ptsd_pct
+# <dbl+lbl>               <int>  <int>    <dbl>
+# 0 [0 traumatic events]    264     46    17.4 
+# 1 [1-2]                   218     16     7.34
+# 2 [3-5]                   433     41     9.47
+# 3 [6-8]                   610     75    12.3 
+# 4 [9+ traumatic events]  1460    418    28.6 
+
+# PTSD prevalence was highest among participants reporting nine or more occupational 
+# traumatic-event types. However, the relationship was not strictly linear across categories, 
+# because prevalence was lower among participants reporting one to eight event types than 
+# among those reporting no occupational event types. 
+# This pattern should be interpreted cautiously, particularly because the 
+# 0 exposure and 1-2 exposure groups were relatively small and because occupational trauma 
+# exposure does not necessarily capture trauma from other areas of life.
+
+
+# now create the descriptive table 1
+table1 <- PSW_analysis |>
+    select(
+        ptsd_group,
+        trauma_cat_f,
+        age_4cat_f,
+        sex_2cat_f,
+        raceethnicity_cat_f,
+        education_cat_f,
+        maritalrelat_new_f,
+        psw_service4cat_f,
+        psw_status3cat_f, 
+        ptsd_yes
+    ) |>
+    tbl_summary(
+        by = ptsd_group,
+        statistic = all_categorical() ~ "{n} ({p}%)",
+        missing = "no",
+        label = list(
+            trauma_cat_f ~ "Number of different traumatic-event types endorsed",
+            age_4cat_f ~ "Age group",
+            sex_2cat_f ~ "Sex",
+            raceethnicity_cat_f ~ "Race/ethnicity",
+            education_cat_f ~ "Education",
+            maritalrelat_new_f ~ "Marital/relationship status",
+            psw_service4cat_f ~ "Public safety service",
+            psw_status3cat_f ~ "PSW employment status",
+            ptsd_yes ~ "30-day DSM-5 PTSD"
+        )
+    ) |>
+    add_overall(last = TRUE) |>
+    add_p() |>
+    bold_labels()
+
+table1
+
+table1_gt <- table1 |>
+    as_gt() |>
+    tab_header(
+        title = "Characteristics of Pennsylvania Public Safety Workers by 30-Day PTSD Status"
+    )
+
+gtsave(
+    data = table1_gt,
+    filename = "Table1.html"
+)
+```
+
+```{r}
+# Figures
+# Figures
+
+#check stressors and correlations
+summary(
+    PSW_analysis |>
+        select(stressor_factor1:stressor_factor4)
+)
+stressor_data <- PSW_analysis |>
+    select(stressor_factor1:stressor_factor4) 
+
+# Save the printed summary as a text file 
+# minimum, median, mean, maximum, and missingness
+writeLines(
+    capture.output(summary(stressor_data)),
+    "stressor_factor_summary.txt"
+)
+
+# Create and save the Spearman correlation matrix as a CSV and txt file
+stressor_cor <- cor(
+    stressor_data,
+    use = "pairwise.complete.obs",
+    method = "spearman"
+)
+write.csv(
+    stressor_cor,
+    "stressor_factor_correlations.csv",
+    row.names = TRUE
+)
+write.table(
+    stressor_cor,
+    file = "stressor_factor_correlations.txt",
+    sep = "\t",
+    row.names = TRUE,
+    col.names = NA
+)
+# descriptive trauma figure
+ptsd_trauma_plot <- ggplot(
+    ptsd_by_trauma,
+    aes(
+        x = trauma_cat_f,
+        y = ptsd_pct
+    )
+) +
+    geom_col() +
+    labs(
+        x = "Number of different traumatic-event types endorsed",
+        y = "30-day DSM-5 PTSD (%)",
+        title = "30-day DSM-5 PTSD prevalence by occupational trauma exposure"
+    ) +
+    theme_minimal()
+
+print(ptsd_trauma_plot)
+ggsave(
+    filename = "PTSD_by_trauma_number.png",
+    plot = ptsd_trauma_plot,
+    width = 8,
+    height = 6,
+    units = "in",
+    dpi = 300
+)
+
+
+
+ptsd_by_trauma <- PSW_analysis |>
+    group_by(trauma_cat_f) |>
+    summarise(
+        n = n(),
+        ptsd_n = sum(ptsd_yes == 1),
+        ptsd_pct = mean(ptsd_yes == 1) * 100,
+        .groups = "drop"
+    )
+
+ptsd_trauma_plot <- ggplot(
+    ptsd_by_trauma,
+    aes(
+        x = trauma_cat_f,
+        y = ptsd_pct
+    )
+) +
+    geom_col(
+        fill = "#2C7FB8",
+        width = 0.7
+    ) +
+    geom_text(
+        aes(label = sprintf("%.1f%%", ptsd_pct)),
+        vjust = -0.4,
+        size = 4
+    ) +
+    scale_y_continuous(
+        limits = c(0, 35),
+        expand = expansion(mult = c(0, 0.08))
+    ) +
+    labs(
+        x = "Number of different traumatic-event types endorsed",
+        y = "Participants with 30-day PTSD (%)",
+        title = "30-day PTSD prevalence by number of traumatic-event types endorsed"
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(
+        plot.title = element_text(face = "bold"),
+        axis.text.x = element_text(angle = 25, hjust = 1),
+        panel.grid.major.x = element_blank()
+    )
+
+ptsd_trauma_plot
+print(ptsd_trauma_plot)
+ggsave(
+    filename = "PTSD_trauma_plot.png",
+    plot = ptsd_trauma_plot,
+    width = 8,
+    height = 6,
+    units = "in",
+    dpi = 300
+)
+
+```
+
+```{r}
+#  logistic regression Analysis
+# Analysis 1: How common are different traumatic exposures?
+# Analysis 2: Is greater occupational trauma exposure associated with PTSD?
+# Analysis 3: How prevalent/severe is PTSD among workers?
+
+# ============================================================
+# LOGISTIC REGRESSION
+# Occupational traumatic exposure and current PTSD
+# ============================================================
+
+# ------------------------------------------------------------
+# 1. SET REFERENCE GROUPS
+# ------------------------------------------------------------
+
+# Reference groups:
+# Trauma: 0 traumatic events 
+# Age: 18–24 
+# Sex: Female 
+# Race/ethnicity: Non-Hispanic White 
+# Education: High school or GED 
+# Marital relationship: Married/engaged/cohabit 
+# Service sector: Police
+# PSW status: Current 
+
+PSW_analysis <- PSW_analysis |>
+    mutate(
+        trauma_cat_f = fct_relevel(
+            factor(trauma_cat_f),
+            "0 traumatic events"
+        ),
+        age_4cat_f = fct_relevel(
+            factor(age_4cat_f),
+            "18–24"
+        ),
+        sex_2cat_f = fct_relevel(
+            factor(sex_2cat_f),
+            "Female"
+        ),
+        raceethnicity_cat_f = fct_relevel(
+            factor(raceethnicity_cat_f),
+            "Non-Hispanic White"
+        ),
+        education_cat_f = fct_relevel(
+            factor(education_cat_f),
+            "High school or GED"
+        ),
+        maritalrelat_new_f = fct_relevel(
+            factor(maritalrelat_new_f),
+            "Married/engaged/cohabit"
+        ),
+        psw_service4cat_f = fct_relevel(
+            factor(psw_service4cat_f),
+            "Police"
+        ),
+        psw_status3cat_f = fct_relevel(
+            factor(psw_status3cat_f),
+            "Current"
+        )
+    )
+
+# ------------------------------------------------------------
+# 2. CHECK THE REFERENCE LEVELS
+# ------------------------------------------------------------
+lapply(
+    PSW_analysis[c(
+        "trauma_cat_f",
+        "age_4cat_f",
+        "sex_2cat_f",
+        "raceethnicity_cat_f",
+        "education_cat_f",
+        "maritalrelat_new_f",
+        "psw_service4cat_f",
+        "psw_status3cat_f"
+    )],
+    levels
+)
+# ------------------------------------------------------------
+# 3. CHECK THE ANALYTIC SAMPLE AND MISSINGNESS
+# ------------------------------------------------------------
+
+# Number of participants in the dataset
+nrow(PSW_analysis)
+
+# Number of missing observations for variables used
+# in the primary adjusted model
+PSW_analysis |>
+    summarise(
+        across(
+            all_of(PSW_model_vars),
+            ~ sum(is.na(.x))
+        )
+    )
+
+# ------------------------------------------------------------
+# 4. MODEL 1: UNADJUSTED
+# ------------------------------------------------------------
+
+# Examines the association between occupational traumatic
+# exposure and current PTSD without adjustment for covariates.
+model1_unadj <- glm(
+    ptsd_yes ~ trauma_cat_f,
+    data = PSW_analysis,
+    family = binomial(link = "logit")
+)
+
+# ------------------------------------------------------------
+# 5. MODEL 2: PRIMARY ADJUSTED MODEL
+# ------------------------------------------------------------
+
+# Adjusts for demographic and occupational characteristics.
+model2_adj <- glm(
+    ptsd_yes ~
+        trauma_cat_f +
+        age_4cat_f +
+        sex_2cat_f +
+        raceethnicity_cat_f +
+        education_cat_f +
+        maritalrelat_new_f +
+        psw_service4cat_f +
+        psw_status3cat_f,
+    data = PSW_analysis,
+    family = binomial(link = "logit")
+)
+
+# ------------------------------------------------------------
+# 6. MODEL 3: ADJUSTED MODEL + WORK-RELATED STRESSORS
+# ------------------------------------------------------------
+
+# Adds the four work-related stressor factors to Model 2.
+# This is a secondary/additional model.
+model3_stress <- glm(
+    ptsd_yes ~
+        trauma_cat_f +
+        age_4cat_f +
+        sex_2cat_f +
+        raceethnicity_cat_f +
+        education_cat_f +
+        maritalrelat_new_f +
+        psw_service4cat_f +
+        psw_status3cat_f + 
+        stressor_factor1 +
+        stressor_factor2 +
+        stressor_factor3 +
+        stressor_factor4,
+    data = PSW_analysis,
+    family = binomial(link = "logit")
+)
+# ------------------------------------------------------------
+# 7. BASIC MODEL CHECKS
+# ------------------------------------------------------------
+
+# Check that all models converged
+# Check that all models converged
+model1_unadj$converged
+model2_adj$converged
+model3_stress$converged
+
+# Number of observations used in each model
+nobs(model1_unadj)
+nobs(model2_adj)
+nobs(model3_stress)
+
+# Full model summaries if you need to inspect them
+summary(model1_unadj)
+summary(model2_adj)
+summary(model3_stress)
+
+# ------------------------------------------------------------
+# 8. EXTRACT ODDS RATIOS AND 95% CIs
+# ------------------------------------------------------------
+
+# exponentiate = TRUE converts logistic regression coefficients
+# from log-odds to odds ratios.
+model1_output <- tidy(
+    model1_unadj,
+    conf.int = TRUE,
+    exponentiate = TRUE
+)
+model2_output <- tidy(
+    model2_adj,
+    conf.int = TRUE,
+    exponentiate = TRUE
+)
+model3_output <- tidy(
+    model3_stress,
+    conf.int = TRUE,
+    exponentiate = TRUE
+)
+# ------------------------------------------------------------
+# 9. CHECK FOR POTENTIAL MODEL INSTABILITY
+# ------------------------------------------------------------
+
+# Look for infinite estimates or unusually large/small
+# odds ratios in the primary adjusted model.
+model2_output |>
+    filter(
+        is.infinite(estimate) |
+            is.infinite(conf.low) |
+            is.infinite(conf.high) |
+            estimate > 100 |
+            estimate < 0.01
+    )
+# Look at the largest standard errors
+# to identify coefficients that may be unstable.
+tidy(model2_adj) |>
+    arrange(desc(std.error))
+
+# ------------------------------------------------------------
+# 10. EXAMINE THE TRAUMA EXPOSURE RESULTS
+# ------------------------------------------------------------
+
+# Primary question:
+# Is greater occupational traumatic exposure associated
+# with current PTSD?
+model2_output |>
+    filter(grepl("^trauma_cat_f", term)) |>
+    select(
+        term,
+        estimate,
+        conf.low,
+        conf.high,
+        p.value
+    )
+# Unadjusted trauma results
+model1_output |>
+    filter(grepl("^trauma_cat_f", term))
+
+# Adjusted + stressors trauma results
+model3_output |>
+    filter(grepl("^trauma_cat_f", term))
+
+# ------------------------------------------------------------
+# 11. CREATE A CLEAN TRAUMA RESULTS TABLE
+# ------------------------------------------------------------
+
+model2_output |>
+    filter(grepl("^trauma_cat_f", term)) |>
+    transmute(
+        predictor = term,
+        adjusted_OR = round(estimate, 2),
+        CI_lower = round(conf.low, 2),
+        CI_upper = round(conf.high, 2),
+        p_value = format.pval(
+            p.value,
+            digits = 3,
+            eps = 0.001
+        )
+    )
+# ------------------------------------------------------------
+# 12. CREATE THE MAIN REGRESSION TABLE
+# ------------------------------------------------------------
+
+# Displays the three logistic regression models side-by-side.
+# Estimates are presented as odds ratios.
+labels_model1 <- list(
+    trauma_cat_f = "Number of different traumatic-event types endorsed"
+)
+labels_model2 <- list(
+    trauma_cat_f = "Number of different traumatic-event types endorsed",
+    age_4cat_f = "Age group",
+    sex_2cat_f = "Sex",
+    raceethnicity_cat_f = "Race/ethnicity",
+    education_cat_f = "Education",
+    maritalrelat_new_f = "Marital/relationship status",
+    psw_service4cat_f = "Public safety service",
+    psw_status3cat_f = "PSW employment status"
+)
+labels_model3 <- c(
+    labels_model2,
+    list(
+        stressor_factor1 = "Organizational climate and supervisory stress",
+        stressor_factor2 = "Operational resource inadequacy",
+        stressor_factor3 = "Administrative and public-facing stress",
+        stressor_factor4 = "Coworker competence concerns"
+    )
+)
+tbl_1 <- tbl_regression(
+    model1_unadj,
+    exponentiate = TRUE,
+    label = labels_model1
+)
+tbl_2 <- tbl_regression(
+    model2_adj,
+    exponentiate = TRUE,
+    label = labels_model2
+)
+tbl_3 <- tbl_regression(
+    model3_stress,
+    exponentiate = TRUE,
+    label = labels_model3
+)
+regression_table <- tbl_merge(
+    tbls = list(tbl_1, tbl_2, tbl_3),
+    tab_spanner = c(
+        "**Model 1: Unadjusted**",
+        "**Model 2: Adjusted**",
+        "**Model 3: Adjusted + Stressors**"
+    )
+) |>
+    bold_labels()
+regression_table
+
+regression_table_gt <- regression_table |>
+    as_gt() |>
+    tab_header(
+        title = "Associations Between Occupational Traumatic Exposure and 30-day PTSD Among Pennsylvania Public Safety Workers"
+    )
+gtsave(
+    data = regression_table_gt,
+    filename = "regression_table.html"
+)
+
+# ------------------------------------------------------------
+# 13. FIGURE: TRAUMA EXPOSURE AND PTSD
+# ------------------------------------------------------------
+
+# Plot the adjusted odds ratios for occupational traumatic
+# exposure from the primary adjusted model.
+
+trauma_or_plot <- model2_output |>
+    filter(grepl("^trauma_cat_f", term)) |>
+    mutate(
+        trauma = sub("^trauma_cat_f", "", term),
+        trauma = factor(
+            trauma,
+            levels = c("1-2", "3-5", "6-8", "9+ traumatic events")
+        )
+    ) |>
+    ggplot(
+        aes(
+            x = estimate,
+            y = trauma,
+            xmin = conf.low,
+            xmax = conf.high
+        )
+    ) +
+    geom_errorbar(
+        orientation = "y",
+        height = 0.15
+    ) +
+    geom_errorbarh(height = 0.15) +
+    geom_point(size = 3, color = "#D95F02") +
+    geom_vline(
+        xintercept = 1,
+        linetype = "dashed",
+        color = "gray40"
+    ) +
+    scale_x_log10() +
+    labs(
+        x = "Adjusted odds ratio (95% CI)",
+        y = "Number of different traumatic-event types endorsed",
+        title = "Number of different traumatic-event types endorsed and 30-day DSM-5 PTSD"
+    ) +
+    theme_minimal(base_size = 13) +
+    theme(
+        plot.title = element_text(face = "bold"),
+        panel.grid.major.y = element_blank()
+    )
+trauma_or_plot
+ggsave(
+    filename = "trauma_adjusted_ORs.png",
+    plot = trauma_or_plot,
+    width = 8,
+    height = 5,
+    dpi = 300
+)
+```
