@@ -11,6 +11,7 @@ This repository contains the code and reproducible Quarto document for an analys
 - `Pennsylvania Public Safety Worker Wellness Survey_Codebook 8.10.26.xlsx`- codebook
 - `data/` - the data is not publicly available
 - `output/` - generated tables and figures
+- `Sarah Gildea_Occupational Trauma and PTSD Among Pennsylvania Public Safety Workers/` - final output and report
 
 ## Reproducibility
 
