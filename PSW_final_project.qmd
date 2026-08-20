@@ -3,7 +3,7 @@ title: "Occupational Trauma and PTSD Among Pennsylvania Public Safety Workers"
 format: html
 editor: visual
 date: "2026-08-17"
-name: "Sarah Gildea
+name: "Sarah Gildea"
 ---
 
 **Research** **question**: Among public safety workers in Pennsylvania, are 12-month occupational traumatic events, work-related stressors, and number of employed local operational personnel employed in the locale associated with 30-day DSM-5 PTSD?
@@ -20,34 +20,64 @@ name: "Sarah Gildea
 
 **Analysis:** Logistic regression
 
-**Conclusion:** **I**n this sample of Pennsylvania public safety workers, 20.0% met criteria for current 30-day DSM-5 PTSD. Nearly half of participants reported 9+ occupational traumatic-event types, and PTSD prevalence was highest in this group. However, the descriptive association was not strictly linear across exposure categories, with lower PTSD prevalence among participants reporting 1-8 event types than among those reporting no occupational event types. Logistic regression models were used to estimate the association between occupational trauma exposure and PTSD while adjusting for demographic and occupational characteristics. Because the data are observational and cross-sectional, the findings should be interpreted as associations rather than causal effects. The exploratory stressor-adjusted model should also be interpreted cautiously because some stressor factors contained only one or two items and the work-stressor questions were not answered by all employment-status groups.
+**Conclusion:** **I**n this sample of Pennsylvania public safety workers, 20.0% met criteria for current 30-day DSM-5 PTSD. Nearly half of participants reported 9+ occupational traumatic-event types, and this group had substantially higher odds of current 30-day PTSD than those who endorsed no occupational traumatic-event types, even after adjustment for demographic, occupational, and work-stressor variables. However, the descriptive association was not strictly linear across exposure categories, with lower PTSD prevalence among participants reporting 1-8 event types than among those reporting no occupational event types. Logistic regression models were used to estimate the association between occupational trauma exposure and PTSD while adjusting for demographic and occupational characteristics. Because the data are observational and cross-sectional, the findings should be interpreted as associations rather than causal effects. The exploratory stressor-adjusted model should also be interpreted cautiously because some stressor factors contained only one or two items and the work-stressor questions were not answered by all employment-status groups.
 
 **Limitations:** These findings should be interpreted in light of several limitations, including the cross-sectional design, reliance on self-reported data, and potential limitations in generalizability. I had some problems reading in the data and cleaning it, but otherwise I learned a lot and also how to interpret the data.
+
+## **RESULTS:**
+
+Descriptive stats: Approximately 20% met criteria for 30-day PTSD Among participants without PTSD, 44% endorsed 9+ types. Among participants with PTSD, 70.1% endorsed 9+ types.
+
+Ages 35–49: 39% met criteria for 30-day PTSD versus 31% without PTSD Ages 65+: 12% among those with PTSD versus 21% without PTSD The overall comparison was statistically significant, p \< 0.001; but the reference age group was very small.
+
+Female: 88% in both groups Male: 12% in both groups Hispanic: 8.7% among those with PTSD 5.2% among those without PTSD; p\<.05 Previously married: 14% with PTSD vs 11% without PTSD
+
+Employment status differed significantly between groups, p \< 0.001:
+
+Currently working: 70% with PTSD versus 66% without PTSD Retired: 22% with PTSD versus 30% without PTSD Disabled: 8.1% with PTSD versus 4.0% without PTSD
+
+Exploratory factor analysis suggested four dimensions of work-related stress: organizational climate and supervisory stress, operational resource inadequacy, administrative and public-facing stress, and coworker competence concerns. The factors accounted for 55.9% of the reported variance. Because some factors contained only one or two items and several items cross-loaded, these measures were treated as exploratory composite scores rather than validated scales
+
+PTSD prevalence was highest among participants endorsing 9+ different types of occupational traumatic events. The pattern was nonmonotonic across the lower exposure categories, with the zero-exposure group having higher prevalence than the 1–2, 3–5, and 6–8 groups.
+
+Model 1: Unaadjusted PSW endorsing 1-2 different traumatic event types had about 62% lower odds of PTSD than PSWs endorsing 0 types. OR = .38, 95% CI: 0.20-.67, p=.001 These results should be interpreted with caution becuase this variable was merely a count of the binary yes/no did they endorse 1+ 12-month trauma count. Among the PSW endorsing 3-5 traumas the odds of PTSD were 50% lower vs 0 exposure group; among 6-8 trauma types endorsed the odds were 34% lower; and the 9+ trauma types endorsed group had 90% higher odds of PTSD vs the 0 types group. So a non-linear pattern=lower odds in intermediate groups but higher in highest.
+
+Model 2: adjusted for age, sex, race/ethnicity, education, marital status, PSW service, employment 1-2 types: 56% lower adjusted odd of PTSD vs 0 group; 3-5 types: not significant; 6-8 types: not significant; 9+ types: after adjustment, this group had 2.37 times the odds of PTSD vs the 0 trauma goup; their odds were 137% higher probability of PTSD 95% CI: 1.54-3.76, p \<.001
+
+The other covariates in the model: hispanic participatns had 64\$ higher adjusted odds of PTSD than non-hispanic white; previously married PSWs had 55% higher adjsuted odds of PTSD compared to PSWs who were married, engaged, or cohabitating; EMS personnel had 2.8 times adjusted odds of PTSD compared to police; and finally, disabled PSWs had 55% higher adjsuted odds of PTSD than the currently employed group.
+
+Model 3: adding work-related stressors After adding the 4 stressors variables (which should be interpreted with caution), the estimated association for 9+ trauma types became smaller but remained statistically significant, p=.011, OR=1.82, 95% CI: 1.17-2.94
+
+Regarding the stressor scales: each 1 point increase in the organizational climate and supervisory stress scale score was associated with about 8% higher odds of PTSD, adjusting for the other variabels in the model; similarly for the operational resource inadequacy scale, a 1 point increase was associated with 18% higher odds of PTSD; the administrative and public-facing stress scale had similar results; the coworker competence concers was not signficant.
+
+The OR for exmployment status were very high, I probably did somethign wrong
+
+The strongest evidence of elevated PTSD odds is concentrated among participants who endorsed nine or more different occupational traumatic-event types
 
 ## Running Code
 
 ```{r}
 # Load packages
-# install and load packages
+# install 
+# install.packages("devtools") 
+# install.packages("tidyverse")
+# install.packages("broom")
+# install.packages("here")
+# install.packages("palmerpenguins")
+# install.packages("gtsummary")
+# install.packages("scales")
+# install.packages("janitor")
+# install.packages("methods")
+# install.packages("readr")
+# install.packages("skimr")
+# install.packages("writexl")
+# install.packages("psych")
+# install.packages("gt")
+# install.packages("haven")
+# install.packages("forcats")
+# devtools::install_github("ID529/ID529tutorials")
 
-install.packages("devtools") 
-install.packages("tidyverse")
-install.packages("broom")
-install.packages("here")
-install.packages("palmerpenguins")
-install.packages("gtsummary")
-install.packages("scales")
-install.packages("janitor")
-install.packages("methods")
-install.packages("readr")
-install.packages("skimr")
-install.packages("writexl")
-install.packages("psych")
-install.packages("gt")
-install.packages("haven")
-install.packages("forcats")
-devtools::install_github("ID529/ID529tutorials")
-
+# load packages
 library(tidyverse)
 library(broom)
 library(here)
@@ -144,6 +174,7 @@ print(PSW_data)
 
 ##############################------------------------ DEMOS------------------------############
 # 1) age and sex
+# sex 1=male, 2=female
 # See if any are -99 and turn to NA: age_cat sex_cat age
 table(PSW_data$age, useNA="ifany")
 table(PSW_data$sex, useNA="ifany")
@@ -171,8 +202,8 @@ PSW_data <- PSW_data |>
         ),
         sex = ifelse(sex == -99, NA_real_, sex),
         sex_2cat = case_when(
-            sex == 1 ~ 0,
-            sex == 2 ~ 1,
+            sex == 1 ~ 1,
+            sex == 2 ~ 0,
             TRUE ~ NA_real_
         ),
         sex_2cat = labelled(
@@ -679,10 +710,7 @@ dev.off()
 
 # stressor_factor4 = Coworker competence concerns scale
 # safetystrsb_2_rev: Incompetent, poorly trained, or unmotivated coworkers
-# An exploratory factor analysis suggested four dimensions of work-related stress. 
-# Because some factors contained only one or two items and some items cross-loaded, 
-# these stressor measures were treated as exploratory secondary covariates rather than 
-# validated scales.        
+
 PSW_data <- PSW_data |>
     mutate(
         stressor_factor1 = rowSums(
@@ -976,33 +1004,6 @@ write.table(
     col.names = NA
 )
 # descriptive trauma figure
-ptsd_trauma_plot <- ggplot(
-    ptsd_by_trauma,
-    aes(
-        x = trauma_cat_f,
-        y = ptsd_pct
-    )
-) +
-    geom_col() +
-    labs(
-        x = "Number of different traumatic-event types endorsed",
-        y = "30-day DSM-5 PTSD (%)",
-        title = "30-day DSM-5 PTSD prevalence by occupational trauma exposure"
-    ) +
-    theme_minimal()
-
-print(ptsd_trauma_plot)
-ggsave(
-    filename = "PTSD_by_trauma_number.png",
-    plot = ptsd_trauma_plot,
-    width = 8,
-    height = 6,
-    units = "in",
-    dpi = 300
-)
-
-
-
 ptsd_by_trauma <- PSW_analysis |>
     group_by(trauma_cat_f) |>
     summarise(
@@ -1425,3 +1426,5 @@ ggsave(
     dpi = 300
 )
 ```
+
+## 

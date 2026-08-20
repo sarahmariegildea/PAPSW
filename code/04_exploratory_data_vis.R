@@ -34,32 +34,6 @@ write.table(
     col.names = NA
 )
 # descriptive trauma figure
-ptsd_trauma_plot <- ggplot(
-    ptsd_by_trauma,
-    aes(
-        x = trauma_cat_f,
-        y = ptsd_pct
-    )
-) +
-    geom_col() +
-    labs(
-        x = "Number of different traumatic-event types endorsed",
-        y = "30-day DSM-5 PTSD (%)",
-        title = "30-day DSM-5 PTSD prevalence by occupational trauma exposure"
-    ) +
-    theme_minimal()
-
-print(ptsd_trauma_plot)
-ggsave(
-    filename = "PTSD_by_trauma_number.png",
-    plot = ptsd_trauma_plot,
-    width = 8,
-    height = 6,
-    units = "in",
-    dpi = 300
-)
-
-
 
 ptsd_by_trauma <- PSW_analysis |>
     group_by(trauma_cat_f) |>
